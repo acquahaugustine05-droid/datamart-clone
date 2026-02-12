@@ -1,0 +1,185 @@
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
+import { BarChart3, Users, TrendingUp } from 'lucide-react';
+
+interface Analytics {
+  total_users: number;
+  total_revenue: number;
+  total_transactions: number;
+}
+
+interface Bundle {
+  id: string;
+  network: string;
+  price: number;
+  data: string;
+  validity: string;
+}
+
+export default function AdminPage() {
+  const [analytics, setAnalytics] = useState<Analytics | null>(null);
+  const [bundles, setBundles] = useState<Bundle[]>([]);
+  const [newNetwork, setNewNetwork] = useState('MTN');
+  const [newPrice, setNewPrice] = useState('');
+  const [newData, setNewData] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    fetchAnalytics();
+    fetchBundles();
+  }, []);
+
+  const fetchAnalytics = async () => {
+    try {
+      const token = localStorage.getItem('authToken');
+      const response = await axios.get(`${process.env.REACT_APP_API_URL}/api/admin/analytics`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setAnalytics(response.data);
+    } catch (err) {
+      console.error('Failed to fetch analytics');
+    }
+  };
+
+  const fetchBundles = async () => {
+    try {
+      const token = localStorage.getItem('authToken');
+      const response = await axios.get(`${process.env.REACT_APP_API_URL}/api/bundles`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setBundles(response.data);
+    } catch (err) {
+      console.error('Failed to fetch bundles');
+    }
+  };
+
+  const handleAddBundle = async () => {
+    if (!newPrice || !newData) {
+      alert('Please fill all fields');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const token = localStorage.getItem('authToken');
+      await axios.post(
+        `${process.env.REACT_APP_API_URL}/api/admin/bundles`,
+        {
+          network: newNetwork,
+          price: parseInt(newPrice),
+          data: newData,
+          validity: '30 days'
+        },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      alert('Bundle added successfully');
+      setNewPrice('');
+      setNewData('');
+      fetchBundles();
+    } catch (err) {
+      alert('Failed to add bundle');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="max-w-6xl mx-auto py-12 px-4">
+      <h1 className="text-3xl font-bold text-gray-900 mb-8">Admin Dashboard</h1>
+
+      {/* Analytics */}
+      {analytics && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <div className="bg-white p-6 rounded-lg shadow-md">
+            <div className="flex items-center gap-2 mb-2">
+              <Users className="w-6 h-6 text-blue-600" />
+              <h2 className="text-xl font-bold">Total Users</h2>
+            </div>
+            <p className="text-4xl font-bold text-gray-900">{analytics.total_users}</p>
+          </div>
+
+          <div className="bg-white p-6 rounded-lg shadow-md">
+            <div className="flex items-center gap-2 mb-2">
+              <TrendingUp className="w-6 h-6 text-green-600" />
+              <h2 className="text-xl font-bold">Revenue</h2>
+            </div>
+            <p className="text-4xl font-bold text-gray-900">₦{analytics.total_revenue.toLocaleString()}</p>
+          </div>
+
+          <div className="bg-white p-6 rounded-lg shadow-md">
+            <div className="flex items-center gap-2 mb-2">
+              <BarChart3 className="w-6 h-6 text-purple-600" />
+              <h2 className="text-xl font-bold">Transactions</h2>
+            </div>
+            <p className="text-4xl font-bold text-gray-900">{analytics.total_transactions}</p>
+          </div>
+        </div>
+      )}
+
+      {/* Add Bundle */}
+      <div className="bg-white p-6 rounded-lg shadow-md mb-8">
+        <h2 className="text-2xl font-bold mb-4">Add New Bundle</h2>
+        
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+          <input
+            type="text"
+            placeholder="Network"
+            value={newNetwork}
+            onChange={(e) => setNewNetwork(e.target.value)}
+            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+          />
+          <input
+            type="number"
+            placeholder="Price"
+            value={newPrice}
+            onChange={(e) => setNewPrice(e.target.value)}
+            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+          />
+          <input
+            type="text"
+            placeholder="Data Size"
+            value={newData}
+            onChange={(e) => setNewData(e.target.value)}
+            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+          />
+          <button
+            onClick={handleAddBundle}
+            disabled={loading}
+            className="bg-blue-600 text-white py-2 rounded-lg font-bold hover:bg-blue-700 transition disabled:opacity-50"
+          >
+            {loading ? 'Adding...' : 'Add Bundle'}
+          </button>
+        </div>
+      </div>
+
+      {/* Bundles List */}
+      <div className="bg-white p-6 rounded-lg shadow-md">
+        <h2 className="text-2xl font-bold mb-4">All Bundles</h2>
+        
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-gray-300">
+                <th className="text-left py-2 px-4">Network</th>
+                <th className="text-left py-2 px-4">Price</th>
+                <th className="text-left py-2 px-4">Data</th>
+                <th className="text-left py-2 px-4">Validity</th>
+              </tr>
+            </thead>
+            <tbody>
+              {bundles.map(bundle => (
+                <tr key={bundle.id} className="border-b border-gray-200">
+                  <td className="py-2 px-4">{bundle.network}</td>
+                  <td className="py-2 px-4">₦{bundle.price}</td>
+                  <td className="py-2 px-4">{bundle.data}</td>
+                  <td className="py-2 px-4">{bundle.validity}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
